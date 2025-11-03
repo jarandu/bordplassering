@@ -4,6 +4,8 @@ import Papa from "papaparse";
 const NAME_COL = "E-postadresse";
 const ATTENDING_COL = "Kommer du?";
 const THEMES_COL = "Hva liker du vanligvis å snakke om med andre mennesker? (Svarene blir kun brukt for dette formålet, og slettet etterpå.)";
+const DISTANCE_FUNCTION = "commonality"; // "commonality" or "avg_distance"
+const OPTIMIZATION_MODE = "poor_connections"; // "distance" or "poor_connections"
 
 // --- 1. Les CSV med feilhåndtering ---
 let csv;
@@ -29,12 +31,21 @@ const people = rows.map((row) => ({
 const n = people.length;
 
 // --- 2. Lag avstandsmatrise ---
-function distance(a, b) {
-  const inter = [...a].filter(x => b.has(x)).length;
-  const union = new Set([...a, ...b]).size;
-  if (union === 0) return 1;
-  return 1 - (inter / union);
+const distanceFunctions = {
+  avg_distance: (a, b) => {
+    const inter = [...a].filter(x => b.has(x)).length;
+    const union = new Set([...a, ...b]).size;
+    if (union === 0) return 1;
+    return 1 - (inter / union);
+  },
+  commonality: (a, b) => {
+    const inter = [...a].filter(x => b.has(x)).length;
+    const commonCount = Math.min(inter, 4); // Begrens til maksimalt 4
+    return (4 - commonCount) / 4; // 0 = nærmest (4+ felles), 1 = fjernest (0 felles)
+  }
 }
+
+const distance = distanceFunctions[DISTANCE_FUNCTION];
 
 const distMatrix = Array.from({ length: n }, () => Array(n).fill(0));
 for (let i = 0; i < n; i++) {
@@ -181,14 +192,51 @@ function calculateTotalCost(route, distMatrix) {
   return cost;
 }
 
+// --- 8b. Beregn antall personer med 2 eller færre felles tema ---
+function countPoorConnections(route, people) {
+  let poorCount = 0;
+  
+  for (let i = 0; i < route.length; i++) {
+    const person = people[route[i]];
+    let totalCommonThemes = new Set();
+    
+    // Sjekk forrige person
+    if (i > 0) {
+      const prev = people[route[i - 1]];
+      [...person.themes].forEach(t => {
+        if (prev.themes.has(t)) totalCommonThemes.add(t);
+      });
+    }
+    
+    // Sjekk neste person
+    if (i < route.length - 1) {
+      const next = people[route[i + 1]];
+      [...person.themes].forEach(t => {
+        if (next.themes.has(t)) totalCommonThemes.add(t);
+      });
+    }
+    
+    // Tell om personen har 2 eller færre felles tema
+    if (totalCommonThemes.size <= 2) {
+      poorCount++;
+    }
+  }
+  
+  return poorCount;
+}
+
 // --- 9. Kjør algoritmen ---
 console.log("🔍 Finner optimal bordplassering med multi-start...\n");
 
-const ATTEMPTS = 100; 
+const ATTEMPTS = 1000; 
 let bestOverallOrder = null;
-let bestOverallCost = Infinity;
+let bestOverallScore = Infinity;
 let improvements = 0;
 
+const modeLabel = OPTIMIZATION_MODE === "distance" 
+  ? "avstand (minimerer total distanse)"
+  : "dårlige tilkoblinger (minimerer personer med ≤2 felles tema)";
+console.log(`Optimaliserer for: ${modeLabel}`);
 console.log(`Kjører ${ATTEMPTS} forsøk med forskjellige startpunkter...\n`);
 
 for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -200,21 +248,29 @@ for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
   
   // 2-opt optimalisering
   order = twoOpt(order, distMatrix);
-  const cost = calculateTotalCost(order, distMatrix);
   
-  if (cost < bestOverallCost) {
-    bestOverallCost = cost;
+  // Velg evalueringsmetode basert på OPTIMIZATION_MODE
+  const score = OPTIMIZATION_MODE === "distance" 
+    ? calculateTotalCost(order, distMatrix)
+    : countPoorConnections(order, people);
+  
+  if (score < bestOverallScore) {
+    bestOverallScore = score;
     bestOverallOrder = order;
     improvements++;
-    console.log(`✨ Forsøk ${attempt + 1}: Ny beste = ${(cost / n).toFixed(4)} (start fra person ${startIdx})`);
+    
+    const scoreLabel = OPTIMIZATION_MODE === "distance"
+      ? `${(score / n).toFixed(4)} gjennomsnittlig avstand`
+      : `${score} personer med ≤2 felles tema`;
+    console.log(`✨ Forsøk ${attempt + 1}: Ny beste = ${scoreLabel} (start fra person ${startIdx})`);
   }
 }
 
 let order = bestOverallOrder;
-console.log(`\n✅ Beste løsning funnet: ${(bestOverallCost / n).toFixed(4)}`);
-
-const farthestPair = findFarthestPair(distMatrix);
-order = rotateToEnds(order, farthestPair);
+const finalLabel = OPTIMIZATION_MODE === "distance"
+  ? `${(bestOverallScore / n).toFixed(4)} gjennomsnittlig avstand`
+  : `${bestOverallScore} personer med ≤2 felles tema`;
+console.log(`\n✅ Beste løsning funnet: ${finalLabel}`);
 
 const seating = order.map(i => people[i]);
 
@@ -235,29 +291,38 @@ const seatingStatistics = seating.map((person, index) => {
   const combinedSimilarity = index === 0 ? nextSimilarity : index === n - 1 ? previousSimilarity : (previousSimilarity + nextSimilarity) / 2;
   return {
     name: person.name,
-    commonThemes: [...commonThemes].map(t => Array.from(t)[0]).join(" "),
+    commonThemes: [...commonThemes],
     combinedSimilarity: combinedSimilarity.toFixed(2),
     hasCommon: commonThemes.size > 0
   };
 });
 
-// Valider at alle har felles tema med naboer
-const isolated = seatingStatistics.filter(s => !s.hasCommon);
-if (isolated.length > 0) {
-  console.log("\n⚠️  ADVARSEL: Følgende personer deler IKKE tema med naboene sine:");
-  isolated.forEach(s => console.log(`   - ${s.name}`));
-  console.log(`   (${isolated.length} av ${n} personer)\n`);
-} else {
-  console.log("\n✅ Alle deler tema med minst én nabo!\n");
-}
-
 console.log("\n📋 Bordplassering med felles tema:");
 console.log("─".repeat(70));
 for (const statistic of seatingStatistics) {
-  const status = statistic.hasCommon ? "✓" : "✗";
-  const themes = statistic.commonThemes || "(ingen felles)";
-  console.log(`${status} ${statistic.name.padEnd(40)} ${statistic.combinedSimilarity.padEnd(10)} ${themes}`);
+  const status = statistic.commonThemes.length > 1 ? "✓" : "✗";
+  console.log(`${status} ${statistic.name.padEnd(40)} ${statistic.combinedSimilarity.padEnd(10)} ${statistic.commonThemes.map(t => Array.from(t)[0]).join(", ")}`);
 }
+
+// Valider
+const isolated = seatingStatistics.filter(s => !s.hasCommon);
+const onlyOneCommon = seatingStatistics.filter(s => s.commonThemes.length === 1);
+const onlyTwoCommon = seatingStatistics.filter(s => s.commonThemes.length === 2);
+if (isolated.length > 0) {
+  console.log(`⚠️  ADVARSEL: ${isolated.length} personer deler IKKE tema med naboene sine:`);
+  isolated.forEach(s => console.log(`   - ${s.name} (${s.commonThemes.join(", ")})`));
+} else {
+  console.log("\n✅ Alle deler tema med minst én nabo!\n");
+}
+if (onlyOneCommon.length > 0) {
+  console.log(`⚠️  ADVARSEL: ${onlyOneCommon.length} personer deler kun ett tema med naboene sine:`);
+  onlyOneCommon.forEach(s => console.log(`   - ${s.name} (${s.commonThemes.join(", ")})`));
+} else {
+  console.log("✅ Alle deler minst to tema med naboene!\n");
+}
+
+console.log(`${onlyTwoCommon.length} personer deler kun to tema med naboene sine`);
+
 
 // // Vis avstandsmatrise for debugging
 // console.log("\n🔢 Avstandsmatrise:");
