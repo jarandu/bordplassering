@@ -184,7 +184,7 @@ function calculateTotalCost(route, distMatrix) {
 // --- 9. Kjør algoritmen ---
 console.log("🔍 Finner optimal bordplassering med multi-start...\n");
 
-const ATTEMPTS = 100; // Økt antall siden vi fjernet SA
+const ATTEMPTS = 100; 
 let bestOverallOrder = null;
 let bestOverallCost = Infinity;
 let improvements = 0;
@@ -212,16 +212,9 @@ for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
 
 let order = bestOverallOrder;
 console.log(`\n✅ Beste løsning funnet: ${(bestOverallCost / n).toFixed(4)}`);
-console.log(`   Totalt ${improvements} forbedringer funnet\n`);
 
 const farthestPair = findFarthestPair(distMatrix);
-console.log(`🎯 Mest ulike par: ${people[farthestPair[0]].name} ↔ ${people[farthestPair[1]].name}`);
-
 order = rotateToEnds(order, farthestPair);
-
-// --- 10. Skriv ut resultat ---
-console.log("\n🍽️  Optimal bordplassering:");
-console.log("=" .repeat(50));
 
 const seating = order.map(i => people[i]);
 
@@ -265,13 +258,6 @@ for (const statistic of seatingStatistics) {
   const themes = statistic.commonThemes || "(ingen felles)";
   console.log(`${status} ${statistic.name.padEnd(40)} ${statistic.combinedSimilarity.padEnd(10)} ${themes}`);
 }
-console.log("─".repeat(70));
-
-console.log("\n📈 Statistikk:");
-console.log(`Total kostnad: ${calculateTotalCost(order, distMatrix).toFixed(3)}`);
-console.log(`Antall personer: ${n}`);
-console.log(`Personer med felles tema: ${n - isolated.length} av ${n}`);
-console.log(`Mest ulike par: ${people[farthestPair[0]].name} ↔ ${people[farthestPair[1]].name} (avstand: ${distMatrix[farthestPair[0]][farthestPair[1]].toFixed(3)})`);
 
 // // Vis avstandsmatrise for debugging
 // console.log("\n🔢 Avstandsmatrise:");
