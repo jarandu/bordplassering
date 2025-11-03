@@ -50,72 +50,45 @@ function hasCommonThemes(personA, personB) {
 }
 
 // --- 4. Nearest-neighbor TSP heuristic med felles tema ---
-function nearestNeighborWithCommonThemes(distMatrix, people) {
+function nearestNeighborWithCommonThemes(distMatrix, people, startIdx = 0) {
   const n = distMatrix.length;
-  const visited = new Set();
-  const route = [];
+  const tempRoute = [];
+  const tempVisited = new Set();
+  
+  let current = startIdx;
+  tempRoute.push(current);
+  tempVisited.add(current);
 
-  // Prøv flere startpunkter
-  let bestRoute = null;
-  let bestIsolatedCount = Infinity;
-
-  for (let startIdx = 0; startIdx < Math.min(n, 5); startIdx++) {
-    const tempRoute = [];
-    const tempVisited = new Set();
+  while (tempRoute.length < n) {
+    let next = -1;
+    let bestDist = Infinity;
     
-    let current = startIdx;
-    tempRoute.push(current);
-    tempVisited.add(current);
-
-    while (tempRoute.length < n) {
-      let next = -1;
-      let bestDist = Infinity;
-      
-      // Først: prøv å finne noen med felles tema
+    // Først: prøv å finne noen med felles tema
+    for (let j = 0; j < n; j++) {
+      if (!tempVisited.has(j) && 
+          hasCommonThemes(people[current], people[j]) &&
+          distMatrix[current][j] < bestDist) {
+        bestDist = distMatrix[current][j];
+        next = j;
+      }
+    }
+    
+    // Hvis ingen med felles tema, ta den nærmeste
+    if (next === -1) {
       for (let j = 0; j < n; j++) {
-        if (!tempVisited.has(j) && 
-            hasCommonThemes(people[current], people[j]) &&
-            distMatrix[current][j] < bestDist) {
+        if (!tempVisited.has(j) && distMatrix[current][j] < bestDist) {
           bestDist = distMatrix[current][j];
           next = j;
         }
       }
-      
-      // Hvis ingen med felles tema, ta den nærmeste
-      if (next === -1) {
-        for (let j = 0; j < n; j++) {
-          if (!tempVisited.has(j) && distMatrix[current][j] < bestDist) {
-            bestDist = distMatrix[current][j];
-            next = j;
-          }
-        }
-      }
-      
-      tempRoute.push(next);
-      tempVisited.add(next);
-      current = next;
     }
     
-    // Tell hvor mange som er isolerte
-    let isolatedCount = 0;
-    for (let i = 0; i < tempRoute.length; i++) {
-      let hasCommon = false;
-      if (i > 0 && hasCommonThemes(people[tempRoute[i]], people[tempRoute[i-1]])) {
-        hasCommon = true;
-      }
-      if (i < tempRoute.length - 1 && hasCommonThemes(people[tempRoute[i]], people[tempRoute[i+1]])) {
-        hasCommon = true;
-      }
-      if (!hasCommon) isolatedCount++;
-    }
-    
-    if (isolatedCount < bestIsolatedCount) {
-      bestIsolatedCount = isolatedCount;
-      bestRoute = tempRoute;
-    }
+    tempRoute.push(next);
+    tempVisited.add(next);
+    current = next;
   }
 
-  return bestRoute;
+  return tempRoute;
 }
 
 // --- 5. Forbedret 2-opt algoritme ---
@@ -209,13 +182,37 @@ function calculateTotalCost(route, distMatrix) {
 }
 
 // --- 9. Kjør algoritmen ---
-console.log("🔍 Finner optimal bordplassering...\n");
+console.log("🔍 Finner optimal bordplassering med multi-start...\n");
 
-let order = nearestNeighborWithCommonThemes(distMatrix, people);
-console.log(`📊 Nearest-neighbor kostnad: ${calculateTotalCost(order, distMatrix) / n}`);
+const ATTEMPTS = 100; // Økt antall siden vi fjernet SA
+let bestOverallOrder = null;
+let bestOverallCost = Infinity;
+let improvements = 0;
 
-order = twoOpt(order, distMatrix);
-console.log(`⚡ Etter 2-opt forbedring: ${calculateTotalCost(order, distMatrix) / n}`);
+console.log(`Kjører ${ATTEMPTS} forsøk med forskjellige startpunkter...\n`);
+
+for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+  // Randomiser startpunkt for bedre variasjon
+  const startIdx = Math.floor(Math.random() * n);
+  
+  // Start med nearest-neighbor fra dette punktet
+  let order = nearestNeighborWithCommonThemes(distMatrix, people, startIdx);
+  
+  // 2-opt optimalisering
+  order = twoOpt(order, distMatrix);
+  const cost = calculateTotalCost(order, distMatrix);
+  
+  if (cost < bestOverallCost) {
+    bestOverallCost = cost;
+    bestOverallOrder = order;
+    improvements++;
+    console.log(`✨ Forsøk ${attempt + 1}: Ny beste = ${(cost / n).toFixed(4)} (start fra person ${startIdx})`);
+  }
+}
+
+let order = bestOverallOrder;
+console.log(`\n✅ Beste løsning funnet: ${(bestOverallCost / n).toFixed(4)}`);
+console.log(`   Totalt ${improvements} forbedringer funnet\n`);
 
 const farthestPair = findFarthestPair(distMatrix);
 console.log(`🎯 Mest ulike par: ${people[farthestPair[0]].name} ↔ ${people[farthestPair[1]].name}`);
