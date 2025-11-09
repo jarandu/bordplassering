@@ -33,7 +33,7 @@
   
   function getSeatColor(commonThemesCount: number): string {
     if (commonThemesCount > 2) return '#4CAF50';
-    if (commonThemesCount === 2) return '#8BC34A';
+    if (commonThemesCount === 2) return '#d3bb06';
     if (commonThemesCount === 1) return '#FF9800';
     return '#f44336';
   }
@@ -165,7 +165,7 @@
     {#each seatData as seat, idx}
       {@const nextPerson = idx < table.seats.length - 1 ? table.seats[seat.position + 1] : null}
       {@const prevPerson = idx > 0 ? table.seats[seat.position - 1] : null}
-      {@const shared = nextPerson ? getSharedThemes(seat.person, nextPerson, prevPerson) : []}
+      {@const shared = getSharedThemes(seat.person, nextPerson, prevPerson)}
       
       <div class="seat-info" style="border-left-color: {seat.color}">
         <div class="seat-header">

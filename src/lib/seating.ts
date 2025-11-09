@@ -57,6 +57,30 @@ function parseCSVLine(line: string): string[] {
   return fields;
 }
 
+// Helper function to derive name from email address
+function deriveNameFromEmail(email: string): string {
+  // Extract the part before @
+  const localPart = email.split('@')[0];
+  
+  // Split by dots and process each part
+  const parts = localPart.split('.');
+  
+  // Convert each part to title case, preserving hyphens
+  const nameParts = parts.map(part => {
+    // Handle hyphenated names like "ole-martin" or "amanda-k"
+    const hyphenParts = part.split('-');
+    const capitalizedHyphenParts = hyphenParts.map(hp => {
+      if (hp.length === 0) return hp;
+      // Single letter parts (like "k" in "amanda.k.jansen") stay lowercase
+      if (hp.length === 1) return hp.toLowerCase();
+      return hp.charAt(0).toUpperCase() + hp.slice(1).toLowerCase();
+    });
+    return capitalizedHyphenParts.join('-');
+  });
+  
+  return nameParts.join(' ');
+}
+
 // Parse CSV without external library
 export function parseCSV(csvText: string): Person[] {
   const lines = csvText.trim().split('\n');
@@ -87,8 +111,12 @@ export function parseCSV(csvText: string): Person[] {
         themesText.split(',').map(t => t.trim()).filter(t => t)
       );
       
+      // Derive name from email address
+      const email = fields[nameIdx];
+      const name = deriveNameFromEmail(email);
+      
       people.push({
-        name: fields[nameIdx],
+        name: name,
         themes
       });
     }

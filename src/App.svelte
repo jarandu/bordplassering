@@ -230,15 +230,15 @@
         <label>
           <span>Avstandsmetode:</span>
           <select bind:value={distanceFunction}>
-            <option value="commonality">Felleshet (anbefalt)</option>
-            <option value="avg_distance">Gjennomsnittlig avstand</option>
+            <option value="commonality">Felles tema, opp til 4</option>
+            <option value="avg_distance">Gjennomsnittlig (Jaccard) avstand</option>
           </select>
         </label>
         <p class="help-text">
           {#if distanceFunction === 'commonality'}
-            Prioriterer personer med mange felles tema (opptil 4).
+            Belønner personer med felles temaer, men begrenser til maksimalt 4.
           {:else}
-            Bruker Jaccard-avstand (union/snitt av tema).
+            Bruker Jaccard-avstand (union/snitt av alle valgte temaer).
           {/if}
         </p>
         
@@ -251,9 +251,9 @@
         </label>
         <p class="help-text">
           {#if optimizationMode === 'poor_connections'}
-            Reduserer antall personer med 2 eller færre felles tema med naboer.
+            Reduserer antall personer med 2 eller færre felles tema med naboer. (Alle kommer litt bedre ut fra et minimumsperspektiv.)
           {:else}
-            Minimerer total avstand mellom alle naboer i rekkefølgen.
+            Minimerer total avstand mellom alle personer. (Kan gi dårligere resultater for noen personer.)
           {/if}
         </p>
         
@@ -284,17 +284,14 @@
       {#if result && !isProcessing}
         <div class="results">
           <div class="stats-bar">
-            <div class="stat-badge good">
-              ✓ {result.statistics.filter(s => s.commonThemes.length > 2).length} med 3+ tema
-            </div>
             <div class="stat-badge ok">
-              ~ {result.statistics.filter(s => s.commonThemes.length === 2).length} med 2 tema
+              <strong>{result.statistics.filter(s => s.commonThemes.length === 2).length}</strong> personer med 2 tema
             </div>
             <div class="stat-badge warning" class:hidden={!result.statistics.some(s => s.commonThemes.length === 1)}>
-              ⚠ {result.statistics.filter(s => s.commonThemes.length === 1).length} med 1 tema
+              ⚠ <strong>{result.statistics.filter(s => s.commonThemes.length === 1).length}</strong> personer med 1 tema
             </div>
             <div class="stat-badge bad" class:hidden={!result.statistics.some(s => s.commonThemes.length === 0)}>
-              ✗ {result.statistics.filter(s => s.commonThemes.length === 0).length} med 0 tema
+              ✗ <strong>{result.statistics.filter(s => s.commonThemes.length === 0).length}</strong> personer med 0 tema
             </div>
           </div>
           
@@ -563,14 +560,9 @@
     font-weight: 500;
   }
   
-  .stat-badge.good {
-    background: #1b5e20;
-    color: #81c784;
-  }
-  
   .stat-badge.ok {
-    background: #33691e;
-    color: #aed581;
+    background: #d3bb06;
+    color: #000000;
   }
   
   .stat-badge.warning {
@@ -620,7 +612,7 @@
   }
 
   .hidden {
-    opacity: 0.25;
+    opacity: 0.15;
     pointer-events: none;
   }
 </style>
