@@ -1,5 +1,6 @@
 export interface Person {
   name: string;
+  label?: string;
   themes: Set<string>;
 }
 

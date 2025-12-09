@@ -7,6 +7,11 @@ const THEMES_COL = "Hva liker du vanligvis å snakke om med andre mennesker? (Sv
 const DISTANCE_FUNCTION = "commonality"; // "commonality" or "avg_distance"
 const OPTIMIZATION_MODE = "poor_connections"; // "distance" or "poor_connections"
 
+const CONSTANT_PAIRS_EMAILS = [
+  ["majbritt.jensen@amedia.no", "boris.sidorevitj@amedia.no"],
+  ["ragnhild.harbo@amedia.no", "janne.rygh@amedia.no"],
+];
+
 // --- 1. Les CSV med feilhåndtering ---
 let csv;
 try {
@@ -103,15 +108,64 @@ function nearestNeighborWithCommonThemes(distMatrix, people, startIdx = 0) {
 }
 
 // --- 5. Forbedret 2-opt algoritme ---
-function twoOpt(route, distMatrix) {
+function twoOpt(route, distMatrix, constantPairs = []) {
   let improved = true;
   const n = route.length;
+  
+  // Hjelpefunksjon for å sjekke om en swap bryter opp et konstant par
+  function wouldBreakPair(i, j) {
+    if (constantPairs.length === 0) return false;
+    
+    // Sjekk alle konstante par
+    for (const [idx1, idx2] of constantPairs) {
+      const pos1 = route.indexOf(idx1);
+      const pos2 = route.indexOf(idx2);
+      
+      // Sjekk om de er naboer
+      const areNeighbors = Math.abs(pos1 - pos2) === 1 || 
+                          (pos1 === 0 && pos2 === n - 1) ||
+                          (pos2 === 0 && pos1 === n - 1);
+      
+      if (areNeighbors) {
+        // Sjekk om swap vil bryte opp dette paret
+        // Etter swap vil segmentet fra i til j være reversert
+        // Hvis begge er inne i segmentet, vil de fortsatt være naboer (bare reversert)
+        // Hvis bare én er inne i segmentet, bryter det opp paret
+        const pos1InSegment = pos1 >= i && pos1 <= j;
+        const pos2InSegment = pos2 >= i && pos2 <= j;
+        
+        // Hvis bare én av dem er i segmentet, bryter det opp paret
+        if (pos1InSegment !== pos2InSegment) {
+          return true;
+        }
+        
+        // Hvis begge er i segmentet, sjekk om de fortsatt vil være naboer etter reversering
+        if (pos1InSegment && pos2InSegment) {
+          // Etter reversering vil posisjonene være: j - (pos - i)
+          const newPos1 = j - (pos1 - i);
+          const newPos2 = j - (pos2 - i);
+          const stillNeighbors = Math.abs(newPos1 - newPos2) === 1 ||
+                                (newPos1 === 0 && newPos2 === n - 1) ||
+                                (newPos2 === 0 && newPos1 === n - 1);
+          if (!stillNeighbors) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
   
   while (improved) {
     improved = false;
     
     for (let i = 1; i < n - 2; i++) {
       for (let j = i + 1; j < n - 1; j++) {
+        // Ikke utfør swap hvis det bryter opp et konstant par
+        if (wouldBreakPair(i, j)) {
+          continue;
+        }
+        
         // Beregn kostnad før swap
         const before = distMatrix[route[i-1]][route[i]] + distMatrix[route[j]][route[j+1]];
         
@@ -246,8 +300,11 @@ for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
   // Start med nearest-neighbor fra dette punktet
   let order = nearestNeighborWithCommonThemes(distMatrix, people, startIdx);
   
-  // 2-opt optimalisering
-  order = twoOpt(order, distMatrix);
+  // 2-opt optimalisering (respekterer konstante par)
+  order = twoOpt(order, distMatrix, constantPairs);
+  
+  // Sikre at konstante par er naboer (i tilfelle de ble brutt opp)
+  order = enforceConstantPairs(order, constantPairs);
   
   // Velg evalueringsmetode basert på OPTIMIZATION_MODE
   const score = OPTIMIZATION_MODE === "distance" 
@@ -267,6 +324,7 @@ for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
 }
 
 let order = bestOverallOrder;
+
 const finalLabel = OPTIMIZATION_MODE === "distance"
   ? `${(bestOverallScore / n).toFixed(4)} gjennomsnittlig avstand`
   : `${bestOverallScore} personer med ≤2 felles tema`;
@@ -291,6 +349,7 @@ const seatingStatistics = seating.map((person, index) => {
   const combinedSimilarity = index === 0 ? nextSimilarity : index === n - 1 ? previousSimilarity : (previousSimilarity + nextSimilarity) / 2;
   return {
     name: person.name,
+    label: personLabels.get(person.name),
     commonThemes: [...commonThemes],
     combinedSimilarity: combinedSimilarity.toFixed(2),
     hasCommon: commonThemes.size > 0
@@ -301,7 +360,7 @@ console.log("\n📋 Bordplassering med felles tema:");
 console.log("─".repeat(70));
 for (const statistic of seatingStatistics) {
   const status = statistic.commonThemes.length > 1 ? "✓" : "✗";
-  console.log(`${status} ${statistic.name.padEnd(40)} ${statistic.combinedSimilarity.padEnd(10)} ${statistic.commonThemes.map(t => Array.from(t)[0]).join(", ")}`);
+  console.log(`${status} ${statistic.name.padEnd(40)} [${statistic.label}] ${statistic.combinedSimilarity.padEnd(10)} ${statistic.commonThemes.map(t => Array.from(t)[0]).join(", ")}`);
 }
 
 // Valider

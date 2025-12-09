@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { parseCSV, optimizeSeating, assignToTables, type TableAssignment, type DistanceFunction, type OptimizationMode } from './lib/seating';
+  import { parseCSV, optimizeSeating, assignToTables, type TableAssignment, type DistanceFunction, type OptimizationMode, type Person } from './lib/seating';
   import TableVisual from './lib/TableVisual.svelte';
+  import AlphabeticalList from './lib/AlphabeticalList.svelte';
+  import PlaceCards from './lib/SeatCards.svelte';
+	import { labels } from './lib/labels';
   
   let csvInput = $state('');
   let tableSizes = $state<number[]>([8, 8, 8, 8, 8]);
@@ -13,6 +16,7 @@
   let result = $state<TableAssignment | null>(null);
   let errorMessage = $state('');
   let logs = $state<string[]>([]);
+  let activeView: 'tables' | 'alphabetical' | 'placecards' = $state('tables');
 
   const numberOfPeople = $derived(parseCSV(csvInput).length);
   
@@ -54,8 +58,13 @@
       isProcessing = true;
       progress = 'Parser CSV...';
       logs = [...logs, '📄 Starter parsing av CSV...'];
+
+      const shuffledLabels = [...labels].sort(() => Math.random() - 0.5);
       
-      const people = parseCSV(csvInput);
+      const people: Person[] = parseCSV(csvInput).map((person, index) => ({
+        ...person,
+        label: shuffledLabels[index]
+      }));
       logs = [...logs, `✅ Fant ${people.length} personer i CSV-filen`];
       
       console.time('Optimalisering');
@@ -283,26 +292,56 @@
     <div class="main-content">
       {#if result && !isProcessing}
         <div class="results">
-          <div class="stats-bar">
-            <div class="stat-badge ok">
-              <strong>{result.statistics.filter(s => s.commonThemes.length === 2).length}</strong> personer med 2 tema
-            </div>
-            <div class="stat-badge warning" class:hidden={!result.statistics.some(s => s.commonThemes.length === 1)}>
-              ⚠ <strong>{result.statistics.filter(s => s.commonThemes.length === 1).length}</strong> personer med 1 tema
-            </div>
-            <div class="stat-badge bad" class:hidden={!result.statistics.some(s => s.commonThemes.length === 0)}>
-              ✗ <strong>{result.statistics.filter(s => s.commonThemes.length === 0).length}</strong> personer med 0 tema
-            </div>
+          <div class="view-tabs">
+            <button 
+              class="view-tab-button" 
+              class:active={activeView === 'tables'}
+              onclick={() => activeView = 'tables'}
+            >
+              Bord
+            </button>
+            <button 
+              class="view-tab-button" 
+              class:active={activeView === 'alphabetical'}
+              onclick={() => activeView = 'alphabetical'}
+            >
+              Alfabetisk liste
+            </button>
+            <button 
+              class="view-tab-button" 
+              class:active={activeView === 'placecards'}
+              onclick={() => activeView = 'placecards'}
+            >
+              Bordkort
+            </button>
           </div>
           
-          <div class="tables-container">
-            {#each result.tables as table, tableIdx}
-              {@const hasSeats = table.seats.some(s => s !== null)}
-              {#if hasSeats}
-                <TableVisual {table} tableNumber={tableIdx + 1} statistics={result.statistics} />
-              {/if}
-            {/each}
-          </div>
+          {#if activeView === 'tables'}
+            <div class="stats-bar">
+              <div class="stat-badge ok">
+                <strong>{result.statistics.filter(s => s.commonThemes.length === 2).length}</strong> personer med 2 tema
+              </div>
+              <div class="stat-badge warning" class:hidden={!result.statistics.some(s => s.commonThemes.length === 1)}>
+                ⚠ <strong>{result.statistics.filter(s => s.commonThemes.length === 1).length}</strong> personer med 1 tema
+              </div>
+              <div class="stat-badge bad" class:hidden={!result.statistics.some(s => s.commonThemes.length === 0)}>
+                ✗ <strong>{result.statistics.filter(s => s.commonThemes.length === 0).length}</strong> personer med 0 tema
+              </div>
+            </div>
+            
+            <div class="tables-container">
+              {#each result.tables as table, tableIdx}
+                {@const hasSeats = table.seats.some(s => s !== null)}
+                {#if hasSeats}
+                  <TableVisual {table} tableNumber={tableIdx + 1} statistics={result.statistics} />
+                {/if}
+              {/each}
+            </div>
+          {:else if activeView === 'alphabetical'}
+            <AlphabeticalList tables={result.tables} />
+          {:else if activeView === 'placecards'}
+            <PlaceCards tables={result.tables} />
+          {/if}
         </div>
       {:else}
         <div class="placeholder">
@@ -541,6 +580,37 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+  
+  .view-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0;
+  }
+  
+  .view-tab-button {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    color: #888;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  
+  .view-tab-button:hover {
+    color: #b0b0b0;
+  }
+  
+  .view-tab-button.active {
+    color: #4CAF50;
+    border-bottom-color: #4CAF50;
   }
   
   .stats-bar {

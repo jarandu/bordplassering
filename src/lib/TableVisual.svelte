@@ -1,9 +1,13 @@
 <script lang="ts">
   import type { Table, Person } from './seating';
   
-  export let table: Table;
-  export let tableNumber: number;
-  export let statistics: any[];
+  interface Props {
+    table: Table;
+    tableNumber: number;
+    statistics: any[];
+  }
+  
+  const { table, tableNumber, statistics }: Props = $props();
   
   const seatSize = 23;
   const seatGap = 4;
@@ -170,7 +174,7 @@
       <div class="seat-info" style="border-left-color: {seat.color}">
         <div class="seat-header">
           <span class="seat-num">{seat.position + 1}.</span>
-          <span class="person-name">{seat.person?.name}</span>
+          <span class="person-name">{seat.person?.name} [{seat.person?.label}]</span>
           <span class="theme-count">({seat.commonThemesCount} tema)</span>
         </div>
         {#if shared.length > 0}
