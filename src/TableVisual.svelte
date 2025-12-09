@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Table, Person } from './seating';
+  import type { Table, Person } from './lib/seating';
   
   interface Props {
     table: Table;

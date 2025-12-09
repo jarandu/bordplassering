@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { parseCSV, optimizeSeating, assignToTables, type TableAssignment, type DistanceFunction, type OptimizationMode, type Person } from './lib/seating';
-  import TableVisual from './lib/TableVisual.svelte';
-  import AlphabeticalList from './lib/AlphabeticalList.svelte';
-  import PlaceCards from './lib/SeatCards.svelte';
+  import TableVisual from './TableVisual.svelte';
+  import AlphabeticalList from './AlphabeticalList.svelte';
+  import PlaceCards from './SeatCards.svelte';
 	import { labels } from './lib/labels';
   
   let csvInput = $state('');
@@ -437,12 +437,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
-  }
-  
-  label span {
-    font-weight: 500;
-    color: #999;
-    font-size: 0.9rem;
+
+    & span {
+      font-weight: 500;
+      color: #999;
+      font-size: 0.9rem;
+    }
   }
   
   input[type="number"],
@@ -480,10 +480,10 @@
     display: flex;
     gap: 0.5rem;
     align-items: flex-end;
-  }
-  
-  .table-config label {
-    flex: 1;
+
+    & label {
+      flex: 1;
+    }
   }
   
   .remove-btn {
@@ -495,10 +495,10 @@
     cursor: pointer;
     font-size: 1.2rem;
     line-height: 1;
-  }
-  
-  .remove-btn:hover {
-    background: #d32f2f;
+
+    &:hover {
+      background: #d32f2f;
+    }
   }
   
   button {
@@ -509,14 +509,6 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-  }
-  
-  button.primary {
-    background: #4CAF50;
-    color: white;
-    width: 100%;
-    padding: 0.75rem;
-    font-size: 1rem;
   }
   
   button.primary:hover:not(:disabled) {

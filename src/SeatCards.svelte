@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Table, Person } from './seating';
+  import type { Table, Person } from './lib/seating';
   
   interface Props {
     tables: Table[];
@@ -87,7 +87,7 @@
     --page-width: 29.7cm;
     --page-height: 21cm;
     --page-padding: 0.2cm;
-    --page-margin: 1cm;
+    --page-margin: 0.1cm;
     --purple-light: #eee2ff;
     --purple-dark: #5400C2;
 
@@ -169,9 +169,9 @@
     overflow: hidden;
   }
 
-  .card:nth-child(4),
-  .card:nth-child(5),
-  .card:nth-child(6) {
+  .card:nth-child(1),
+  .card:nth-child(2),
+  .card:nth-child(3) {
     transform: rotate(180deg);
   }
   
@@ -179,15 +179,15 @@
     position: relative;
     width: 100%;
     height: 50%;
-  }
 
-  .card-back img {
-    position: absolute;
-    top: 0;
-    right: 30%;
-    width: 120pt;
-    height: auto;
-    transform: rotate(180deg) translateY(25%);
+    img {
+      position: absolute;
+      top: 0;
+      right: 33.1%;
+      width: 150pt;
+      height: auto;
+      transform: rotate(180deg) translateY(25%);
+    }
   }
   
   .card-front {
@@ -201,7 +201,7 @@
   }
   
   .card-name {
-    font-size: 22pt;
+    font-size: 23pt;
     font-weight: bold;
     color: var(--purple-dark);
     line-height: 1.3;
