@@ -63,10 +63,10 @@
           <div></div>
         </div>
         <div class="cards-container">
-          {#each page as card, cardIdx}
+          {#each page as card, i}
             <div class="card">
               <div class="card-back">
-                <img src="/nisse.png" alt="Nisse" />
+                <img src="/nisse-reverse.svg" alt="Nisse" />
               </div>
               <div class="card-front">
                 <div class="card-name">{card.person.name}</div>
@@ -87,7 +87,7 @@
     --page-width: 29.7cm;
     --page-height: 21cm;
     --page-padding: 0.2cm;
-    --page-margin: 0.1cm;
+    --page-margin: 0.4cm;
     --purple-light: #eee2ff;
     --purple-dark: #5400C2;
 
@@ -182,11 +182,10 @@
 
     img {
       position: absolute;
-      top: 0;
-      right: 33.1%;
+      top: -25%;
+      right: 33.2%;
       width: 150pt;
       height: auto;
-      transform: rotate(180deg) translateY(25%);
     }
   }
   
@@ -215,7 +214,6 @@
     margin-top: 0.3cm;
     color: var(--purple-dark);
     opacity: 0.6;
-    filter: brightness(0.6);
   }
   
   /* Print styles */
